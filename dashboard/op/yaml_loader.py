@@ -24,7 +24,6 @@ class Application(object):
         except yaml.YAMLError as e:
             stream = None
             logger.info(e)
-            pass
         return stream
 
     def _render_data(self):
@@ -50,6 +49,8 @@ class Application(object):
         redirects = []
         for app in self.apps["apps"]:
             if self._has_vanity(app):
-                for redirect in app["application"]["vanity_url"]:
-                    redirects.append({redirect: app["application"]["url"]})
+                redirects.extend(
+                    {redirect: app["application"]["url"]}
+                    for redirect in app["application"]["vanity_url"]
+                )
         return redirects

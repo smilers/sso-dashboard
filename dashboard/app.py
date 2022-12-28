@@ -102,7 +102,7 @@ def home():
         return redirect("dashboard", code=302)
 
     url = request.url.replace("http://", "https://", 1)
-    return redirect(url + "dashboard", code=302)
+    return redirect(f"{url}dashboard", code=302)
 
 @app.route("/csp_report", methods=["POST"])
 def csp_report():
@@ -151,9 +151,7 @@ def logout():
     Redirect to new feature in NLX that destroys autologin preferences.
     Aka Logout is REALLY logout.
     """
-    logout_url = "https://{}/login?client={}&action=logout".format(
-        oidc_config.OIDC_DOMAIN, oidc_config.OIDC_CLIENT_ID
-    )
+    logout_url = f"https://{oidc_config.OIDC_DOMAIN}/login?client={oidc_config.OIDC_CLIENT_ID}&action=logout"
     return redirect(logout_url, code=302)
 
 
@@ -162,9 +160,7 @@ def showautologinsettings():
     """
     Redirect to NLX Auto-login Settings page
     """
-    autologin_settings_url = "https://{}/login?client={}&action=autologin_settings".format(
-        oidc_config.OIDC_DOMAIN, oidc_config.OIDC_CLIENT_ID
-    )
+    autologin_settings_url = f"https://{oidc_config.OIDC_DOMAIN}/login?client={oidc_config.OIDC_CLIENT_ID}&action=autologin_settings"
     return redirect(autologin_settings_url, code=302)
 
 
@@ -179,9 +175,7 @@ def signout():
 def dashboard():
     """Primary dashboard the users will interact with."""
     logger.info(
-        "User: {} authenticated proceeding to dashboard.".format(
-            session.get("id_token")["sub"]
-        )
+        f'User: {session.get("id_token")["sub"]} authenticated proceeding to dashboard.'
     )
 
     if "Mozilla-LDAP" in session.get("userinfo")["sub"]:
@@ -192,9 +186,7 @@ def dashboard():
             )
         except Exception as e:
             logger.error(
-                "Could not enrich profile due to: {}.  Perhaps it doesn't exist?".format(
-                    e
-                )
+                f"Could not enrich profile due to: {e}.  Perhaps it doesn't exist?"
             )
 
     # Hotfix to set user id for firefox alert
@@ -242,30 +234,30 @@ def notifications():
 @oidc.oidc_auth
 @app.route("/alert/<alert_id>", methods=["POST"])
 def alert_operation(alert_id):
-    if request.method == "POST":
-        user = User(session, config.Config(app).settings)
-        if request.data is not None:
-            data = json.loads(request.data.decode())
-            helpfulness = data.get("helpfulness")
-            alert_action = data.get("alert_action")
+    if request.method != "POST":
+        return
+    user = User(session, config.Config(app).settings)
+    if request.data is not None:
+        data = json.loads(request.data.decode())
+        helpfulness = data.get("helpfulness")
+        alert_action = data.get("alert_action")
 
-        result = user.take_alert_action(alert_id, alert_action, helpfulness)
+    result = user.take_alert_action(alert_id, alert_action, helpfulness)
 
-        if result["ResponseMetadata"]["HTTPStatusCode"] == 200:
-            return "200"
-        else:
-            return "500"
+    return "200" if result["ResponseMetadata"]["HTTPStatusCode"] == 200 else "500"
 
 
 @oidc.oidc_auth
 @app.route("/alert/fake", methods=["GET"])
 def alert_faking():
-    if request.method == "GET":
-        if app.config.get("SERVER_NAME") != "sso.mozilla.com":
-            """Only allow alert faking in non production environment."""
-            user = User(session, config.Config(app).settings)
-            fake_alerts = FakeAlert(user_id=user.userinfo.get("sub"))
-            fake_alerts.create_fake_alerts()
+    if (
+        request.method == "GET"
+        and app.config.get("SERVER_NAME") != "sso.mozilla.com"
+    ):
+        """Only allow alert faking in non production environment."""
+        user = User(session, config.Config(app).settings)
+        fake_alerts = FakeAlert(user_id=user.userinfo.get("sub"))
+        fake_alerts.create_fake_alerts()
 
     return redirect("/dashboard", code=302)
 

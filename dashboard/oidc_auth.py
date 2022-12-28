@@ -17,18 +17,19 @@ class OpenIDConnect(object):
         self.oidc_config = configuration
 
     def client_info(self):
-        client_info = {"client_id": self.oidc_config.client_id, "client_secret": self.oidc_config.client_secret}
-        return client_info
+        return {
+            "client_id": self.oidc_config.client_id,
+            "client_secret": self.oidc_config.client_secret,
+        }
 
     def get_oidc(self, app):
         extra_request_args = {"scope": ["openid", "profile"]}
-        o = OIDCAuthentication(
+        return OIDCAuthentication(
             app,
             issuer="https://{DOMAIN}".format(DOMAIN=self.oidc_config.OIDC_DOMAIN),
             client_registration_info=self.client_info(),
             extra_request_args=extra_request_args,
         )
-        return o
 
 
 class tokenVerification(object):
@@ -66,13 +67,10 @@ class tokenVerification(object):
             "Mozilla-LDAP": "LDAP",
             "email": "passwordless email",
         }
-        return CONNECTION_NAMES[connection] if connection in CONNECTION_NAMES else connection
+        return CONNECTION_NAMES.get(connection, connection)
 
     def _signed(self, jwk):
-        if self.jws_obj.verify(jwk):
-            return True
-        else:
-            return False
+        return bool(self.jws_obj.verify(jwk))
 
     def _verified(self):
         try:

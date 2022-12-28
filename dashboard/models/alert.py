@@ -43,7 +43,7 @@ class Feedback(object):
         return response.get("Parameter").get("Value")
 
     def _construct_alert(self):
-        message = {
+        return {
             "category": "user_feedback",
             "details": {
                 "action": self.alert_action,  # (escalate|acknowledge|false-positive)
@@ -51,18 +51,15 @@ class Feedback(object):
             },
         }
 
-        return message
-
     def send(self):
         """Send the event to the SNS Topic."""
         self.connect_sns()
         message = self._construct_alert()
-        response = self.sns.publish(
+        return self.sns.publish(
             TopicArn=self.sns_topic_arn,
             Message=json.dumps(message),
             Subject="sso-dashboard-user-feedback",
         )
-        return response
 
 
 class Alert(object):
@@ -76,19 +73,13 @@ class Alert(object):
         """Let's the view know if it should render actions for the alert."""
 
         # Whitelist the firefox out of date alert.  It should not get buttons.
-        if self.alert_dict.get("alert_code") != "63f675d8896f4fb2b3caa204c8c2761e":
-            return True
-        else:
-            return False
+        return self.alert_dict.get("alert_code") != "63f675d8896f4fb2b3caa204c8c2761e"
 
     def has_escalation(self, alert_dict):
         """Let's the view know if it should render actions for the alert."""
 
         # Whitelist the firefox out of date alert.  It should not get buttons.
-        if self.alert_dict.get("alert_code") != "63f675d8896f4fb2b3caa204c8c2761e":
-            return True
-        else:
-            return False
+        return self.alert_dict.get("alert_code") != "63f675d8896f4fb2b3caa204c8c2761e"
 
     def connect_dynamodb(self):
         if self.dynamodb is None:
@@ -117,9 +108,7 @@ class Alert(object):
                     continue
             except AttributeError as e:
                 logger.error(
-                    "Bad data in alerts table for user: {}, exception was {}".format(
-                        user_id, e
-                    )
+                    f"Bad data in alerts table for user: {user_id}, exception was {e}"
                 )
 
         # Else create another alert.
@@ -134,9 +123,7 @@ class Alert(object):
         self.connect_dynamodb()
 
         alert_dict["alert_id"] = self._create_alert_id()
-        response = self.dynamodb.put_item(Item=alert_dict)
-
-        return response
+        return self.dynamodb.put_item(Item=alert_dict)
 
     def destroy(self, alert_id, user_id):
         """
@@ -146,11 +133,9 @@ class Alert(object):
         """
         self.connect_dynamodb()
 
-        response = self.dynamodb.delete_item(
+        return self.dynamodb.delete_item(
             Key={"alert_id": alert_id, "user_id": user_id}
         )
-
-        return response
 
     def update(self, alert_id, alert_dict):
         """
@@ -162,9 +147,7 @@ class Alert(object):
         self.connect_dynamodb()
 
         alert_dict["alert_id"] = alert_id
-        response = self.dynamodb.put_item(Item=alert_dict)
-
-        return response
+        return self.dynamodb.put_item(Item=alert_dict)
 
     def find(self, user_id):
         """
@@ -194,9 +177,7 @@ class Alert(object):
                     )
                     alerts.extend(response["Items"])
         except Exception as e:
-            logger.error(
-                "Could not load alerts for user: {} due to: {}.".format(user_id, e)
-            )
+            logger.error(f"Could not load alerts for user: {user_id} due to: {e}.")
             alerts = []
 
         inactive_alerts = []
@@ -226,14 +207,11 @@ class Alert(object):
         }
 
     def _alert_is_expired(self, alert):
-        now = datetime.datetime.today()
+        now = datetime.datetime.now()
         threshold = now - datetime.timedelta(days=7)
         alert_time = datetime.datetime.strptime(alert.get("date"), "%Y-%m-%d")
 
-        if alert_time < threshold:
-            return True
-        else:
-            return False
+        return alert_time < threshold
 
     def to_summary(self, alert_dict):
         """
@@ -276,10 +254,7 @@ class Alert(object):
             KeyConditionExpression=Key("alert_id").eq(alert_id)
         )
 
-        if response.get("Items"):
-            return response.get("Items")[0]
-
-        return {}
+        return response.get("Items")[0] if response.get("Items") else {}
 
     def _create_alert_id(self):
         """
@@ -336,32 +311,21 @@ class Rules(object):
         release_json = requests.get(
             "https://product-details.mozilla.org/1.0/firefox_versions.json"
         )
-        if release_json.status_code == 200:
-            return release_json.json()
-        else:
-            return None
+        return release_json.json() if release_json.status_code == 200 else None
 
     def _user_firefox_version(self):
         agent = self.request.headers.get("User-Agent")
-        if agent.find("Firefox") != -1:
-            version = agent.split("Firefox/")[1]
-        else:
-            version = None
-        return version
+        return agent.split("Firefox/")[1] if agent.find("Firefox") != -1 else None
 
     def _version_to_dictionary(self, version_number):
         version_number_list = version_number.split(".")
-        version_dict = {
+        return {
             "major_version": version_number_list[0],
             "minor_version": version_number_list[1],
+            "dot_version": version_number_list[2]
+            if len(version_number_list) == 3
+            else None,
         }
-
-        if len(version_number_list) == 3:
-            version_dict["dot_version"] = version_number_list[2]
-        else:
-            version_dict["dot_version"] = None
-
-        return version_dict
 
     def _firefox_out_of_date(self):
         ff_info = self._firefox_info()
@@ -436,21 +400,17 @@ class FakeAlert(object):
                 "source_ip": fake_ip,
             },
             "severity": "NOTICE",
-            "summary": "{} NEWCOUNTRY {}, {} access from {}".format(
-                fake_email, fake_state, fake_country, fake_ip
-            ),
+            "summary": f"{fake_email} NEWCOUNTRY {fake_state}, {fake_country} access from {fake_ip}",
             "tags": ["geomodel"],
             "url": "https://www.mozilla.org/alert",
-            "utctimestamp": "{}+00:00".format(fake.iso8601()),
+            "utctimestamp": f"{fake.iso8601()}+00:00",
         }
 
         alert_dict = {
             "alert_code": "416c65727447656f6d6f64656c",
             "user_id": self.user_id,
             "risk": "high",
-            "summary": "Did you recently login from {}, {} ({})?".format(
-                fake_state, fake_country, fake_ip
-            ),
+            "summary": f"Did you recently login from {fake_state}, {fake_country} ({fake_ip})?",
             "alert_str_json": json.dumps(original_alert_dict),
             "description": "This alert is created based on geo ip information about the last login of a user.",
             "date": str(fake.date(pattern="%Y-%m-%d", end_datetime=None)),

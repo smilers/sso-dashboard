@@ -22,9 +22,7 @@ class User(object):
             email = self.userinfo.get("email")
         except Exception as e:
             logger.error(
-                "The email attribute does no exists falling back to OIDC Conformant: {}.".format(
-                    e
-                )
+                f"The email attribute does no exists falling back to OIDC Conformant: {e}."
             )
             email = self.userinfo.get("https://sso.mozilla.com/claim/emails")[0][
                 "emails"
@@ -36,20 +34,14 @@ class User(object):
         authorized_apps = {"apps": []}
 
         for app in app_list["apps"]:
-            if self._is_valid_yaml(app):
-                if self._is_authorized(app):
-                    authorized_apps["apps"].append(app)
+            if self._is_valid_yaml(app) and self._is_authorized(app):
+                authorized_apps["apps"].append(app)
 
         return authorized_apps.get("apps", [])
 
     @property
     def avatar(self):
-        if self.idvault_info:
-            picture_url = self.idvault_info.get("picture")
-        else:
-            picture_url = None
-
-        return picture_url
+        return self.idvault_info.get("picture") if self.idvault_info else None
 
     def group_membership(self):
         """Return list of group membership if user is asserted from ldap."""
@@ -57,11 +49,10 @@ class User(object):
             group_count = len(
                 self.userinfo.get("https://sso.mozilla.com/claim/groups", [])
             )
+        elif self.userinfo.get("groups"):
+            group_count = len(self.userinfo.get("groups", []))
         else:
-            if self.userinfo.get("groups"):
-                group_count = len(self.userinfo.get("groups", []))
-            else:
-                group_count = 0
+            group_count = 0
 
         if (
             "https://sso.mozilla.com/claim/groups" in self.userinfo.keys() and group_count > 0
@@ -79,9 +70,7 @@ class User(object):
         """Return user first_name."""
         try:
             return self.idvault_info.get("firstName", "")
-        except KeyError:
-            return ""
-        except AttributeError:
+        except (KeyError, AttributeError):
             return ""
 
     @property
@@ -89,9 +78,7 @@ class User(object):
         """Return user last_name."""
         try:
             return self.idvault_info.get("lastName", "")
-        except KeyError:
-            return ""
-        except AttributeError:
+        except (KeyError, AttributeError):
             return ""
 
     def user_identifiers(self):
@@ -100,8 +87,7 @@ class User(object):
 
     @property
     def alerts(self):
-        alerts = alert.Alert().find(user_id=self.userinfo["sub"])
-        return alerts
+        return alert.Alert().find(user_id=self.userinfo["sub"])
 
     def take_alert_action(self, alert_id, alert_action, helpfulness=None):
         a = alert.Alert()
@@ -174,9 +160,8 @@ class FakeUser(object):
         authorized_apps = {"apps": []}
 
         for app in app_list["apps"]:
-            if self._is_valid_yaml(app):
-                if self._is_authorized(app):
-                    authorized_apps["apps"].append(app)
+            if self._is_valid_yaml(app) and self._is_authorized(app):
+                authorized_apps["apps"].append(app)
         return authorized_apps.get("apps", [])
 
     @property
@@ -205,9 +190,7 @@ class FakeUser(object):
                     "description": "This alert is created based on geo ip information about the last login of a user.",
                     "duplicate": True,
                     "risk": "medium",
-                    "summary": "Did you recently login from {}, {}?".format(
-                        fake.city(), fake.country()
-                    ),
+                    "summary": f"Did you recently login from {fake.city()}, {fake.country()}?",
                     "url": "https://mana.mozilla.org/wiki/display/SECURITY/Alert%3A+Change+in+Country",
                     "url_title": "Get Help",
                     "user_id": "ad|Mozilla-LDAP|fakeuser",
@@ -215,11 +198,9 @@ class FakeUser(object):
                         "Timestamp": fake.date_time_this_year().strftime(
                             "%A, %B %d %Y %H:%M UTC"
                         ),
-                        "New Location": "{}, {}".format(fake.city(), fake.country()),
-                        "New IP": "{} ({})".format(fake.ipv4(), fake.company()),
-                        "Previous Location": "{}, {}".format(
-                            fake.city(), fake.country()
-                        ),
+                        "New Location": f"{fake.city()}, {fake.country()}",
+                        "New IP": f"{fake.ipv4()} ({fake.company()})",
+                        "Previous Location": f"{fake.city()}, {fake.country()}",
                     },
                 },
                 {
@@ -243,7 +224,4 @@ class FakeUser(object):
         return True
 
     def _is_authorized(self, app):
-        if "everyone" in app["application"]["authorized_groups"]:
-            return True
-        else:
-            return False
+        return "everyone" in app["application"]["authorized_groups"]

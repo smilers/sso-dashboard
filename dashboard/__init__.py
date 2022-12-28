@@ -28,7 +28,7 @@ class CredstashEnv(object):
         try:
             if len(namespace) > 0:
                 secret = getSecret(
-                    name="{}.{}".format(namespace[0], key),
+                    name=f"{namespace[0]}.{key}",
                     context={"app": "sso-dashboard"},
                     region="us-east-1",
                 )
@@ -37,10 +37,7 @@ class CredstashEnv(object):
         except ItemNotFound:
             secret = None
 
-        if secret is not None:
-            return secret
-
-        return NO_VALUE
+        return secret if secret is not None else NO_VALUE
 
 
 def get_config():

@@ -23,7 +23,7 @@ class API(object):
             {
                 "client_id": self.config.OIDC_CLIENT_ID,
                 "client_secret": self.config.OIDC_CLIENT_SECRET,
-                "audience": "https://{}".format(self._get_url()),
+                "audience": f"https://{self._get_url()}",
                 "grant_type": "client_credentials",
             }
         )

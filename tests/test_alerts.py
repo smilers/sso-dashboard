@@ -152,8 +152,6 @@ class TestAlerts(object):
         for this_alert in res.get('visible_alerts'):
             if alert_dict.get('alert_id') == this_alert.get('alert_id'):
                 assert 0
-            else:
-                pass
 
 
 class TestRules(object):

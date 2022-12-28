@@ -62,13 +62,11 @@ class AuthorizeAPI(object):
                 401,
             )
 
-        token = parts[1]
-        return token
+        return parts[1]
 
     def get_jwks(self):
-        jsonurl = urlopen("https://" + self.auth0_domain + "/.well-known/jwks.json")
-        jwks = json.loads(jsonurl.read())
-        return jwks
+        jsonurl = urlopen(f"https://{self.auth0_domain}/.well-known/jwks.json")
+        return json.loads(jsonurl.read())
 
     def requires_api_auth(self, f):
         """Determines if the Access Token is valid
@@ -97,7 +95,7 @@ class AuthorizeAPI(object):
                         rsa_key,
                         algorithms=self.algorithms,
                         audience=self.audience,
-                        issuer="https://" + self.auth0_domain + "/",
+                        issuer=f"https://{self.auth0_domain}/",
                     )
                 except jwt.ExpiredSignatureError as e:
                     logger.error(e)

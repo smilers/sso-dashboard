@@ -15,9 +15,7 @@ class Router(object):
             for vanity_url in url.keys():
                 try:
                     self.app.add_url_rule(vanity_url, vanity_url, self.redirect_url)
-                    self.app.add_url_rule(
-                        vanity_url + "/", vanity_url + "/", self.redirect_url
-                    )
+                    self.app.add_url_rule(f"{vanity_url}/", f"{vanity_url}/", self.redirect_url)
                 except Exception as e:
                     print(e)
 
@@ -34,5 +32,3 @@ class Router(object):
                     )
                     resp.headers["Expires"] = "-1"
                     return resp
-                else:
-                    pass

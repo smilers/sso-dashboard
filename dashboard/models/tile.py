@@ -43,9 +43,8 @@ class S3Transfer(object):
     def _update_etag(self, etag):
         this_dir = os.path.dirname(__file__)
         filename = os.path.join(this_dir, "../data/{name}").format(name="apps.yml-etag")
-        c = open(filename, "w+")
-        c.write(etag)
-        c.close()
+        with open(filename, "w+") as c:
+            c.write(etag)
 
     def _etag(self):
         this_dir = os.path.dirname(__file__)
@@ -66,9 +65,8 @@ class S3Transfer(object):
 
         this_dir = os.path.dirname(__file__)
         filename = os.path.join(this_dir, "../data/{name}").format(name="apps.yml")
-        c = open(filename, "w+")
-        c.write(self.apps_yml)
-        c.close()
+        with open(filename, "w+") as c:
+            c.write(self.apps_yml)
         self._update_etag(response.get("ETag"))
 
     def _touch(self):

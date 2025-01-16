@@ -1,5 +1,7 @@
 venv
+.venv
 dashboard/data/apps.yml-etag
+dashboard/data/apps.yml
 dump.rdb
 .env
 env3
@@ -9,6 +11,7 @@ dashboard/static/css/gen/
 dashboard/static/.webassets-cache/
 dashboard/static/img/logos/*
 virtualenv.egg-info
+dashboard.egg-info
 bin
 man
 include
@@ -24,3 +27,7 @@ pip-selfcheck.json
 tests/test_activate_actual.output
 bower_components
 node_modules
+.vscode/*
+build/*
+envfile
+.coverage

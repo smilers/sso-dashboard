@@ -1,39 +1,35 @@
-FROM centos:7
+FROM python:3.12-bullseye
+ARG RELEASE_NAME
 
-RUN yum update -y
-RUN yum install epel-release -y && yum update -y
-RUN yum install nginx python36 python36-devel python36-pip -y
-COPY ./ansible/roles/dashboard/files/dumb-init /usr/bin/dumb-init
-RUN chmod 775 /usr/bin/dumb-init
-RUN yum install gcc \
-    libffi-devel \
-    \ openssl openssl-devel \
-    curl-devel -y
-COPY ./ansible/roles/dashboard/files/nginx/nginx.conf /etc/nginx/nginx.conf
-COPY ./ansible/roles/dashboard/files/nginx/start.sh /usr/bin/start.sh
-RUN chmod 775 /usr/bin/start.sh
-COPY ./ansible/roles/dashboard/files/sso-dashboard.ini /etc/dashboard.ini
-RUN chmod 775 /etc/dashboard.ini
-RUN yum install git -y
-RUN yum install rubygem-sass -y
-RUN pip3 install --upgrade setuptools-rust pip
-RUN pip3 install credstash
-RUN useradd -ms /bin/bash flaskuser
-RUN mkdir /dashboard
-RUN chown -R flaskuser /dashboard
-COPY requirements.txt /dashboard/requirements.txt
-RUN pip3 install --upgrade pip
-RUN pip3 install -r /dashboard/requirements.txt
+# Install Node.js 18.20.4 and global npm packages in a single layer
+RUN apt update && apt install -y curl \
+    && curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs=18.20.4-1nodesource1 \
+    && npm install -g sass \
+    && rm -rf /var/lib/apt/lists/*
+
+# Upgrade pip, install Python dependencies, and clean up in a single layer
+COPY ./requirements.txt /dashboard/
+RUN pip3 install --upgrade pip \
+    && pip3 install -r /dashboard/requirements.txt
+
+# Copy the dashboard code and create necessary directories and files
 COPY ./dashboard/ /dashboard/
-RUN rm /dashboard/static/css/gen/all.css 2& > /dev/null
-RUN rm /dashboard/static/js/gen/packed.js 2& > /dev/null
-RUN rm /dashboard/data/apps.yml-etag 2& > /dev/null
-RUN mkdir -p /dashboard/static/img/logos
-RUN chmod 750 -R /dashboard
-RUN useradd -ms /bin/bash flaskapp
-RUN chown -R flaskapp:nginx /dashboard
-RUN pip3 install pyOpenSSL==17.3.0 --upgrade
-RUN pip3 install cryptography==2.0 --upgrade
-RUN pip3 install flake8 --upgrade
-# RUN pip3 install git+git://github.com/mozilla-iam/pyoidc.git@fix_updated_at#egg=pyoidc
-ENTRYPOINT [ "dumb-init", "/usr/bin/start.sh" ]
+RUN mkdir -p /dashboard/data /dashboard/static/img/logos \
+    && touch /dashboard/data/apps.yml \
+    && chmod 750 -R /dashboard \
+    && rm /dashboard/static/css/gen/all.css \
+    /dashboard/static/js/gen/packed.js \
+    /dashboard/data/apps.yml-etag 2>/dev/null || true
+
+# Write the release name to a version file
+RUN echo $RELEASE_NAME > /version.json
+
+# Set the entrypoint for the container
+ENTRYPOINT ["gunicorn", "dashboard.app:app"]
+
+# This sets the default args which should be overridden
+# by cloud deploy. In general, these should match the
+# args used in cloud deploy dev environment
+# Default command arguments
+CMD ["--worker-class=gevent", "--bind=0.0.0.0:8000", "--workers=3", "--graceful-timeout=30", "--timeout=60", "--log-config=dashboard/logging.ini", "--reload", "--reload-extra-file=/dashboard/data/apps.yml"]
